@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: const NotesPage(), // ⬅ pindah ke Stateful agar setState bisa digunakan
+      home: const NotesPage(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -26,11 +26,68 @@ class NotesPage extends StatefulWidget {
 }
 
 class _NotesPageState extends State<NotesPage> {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
+
+  void _showForm() {
+    _titleController.clear();
+    _contentController.clear();
+
+    showModalBottomSheet(
+      context: context,
+      elevation: 5,
+      isScrollControlled: true,
+      builder: (_) => Container(
+        padding: EdgeInsets.only(
+          top: 15,
+          left: 15,
+          right: 15,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 120,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(hintText: 'Judul Catatan'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _contentController,
+              decoration: const InputDecoration(hintText: 'Isi Catatan'),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                String title = _titleController.text;
+                String content = _contentController.text;
+
+                if (title.isNotEmpty && content.isNotEmpty) {
+                  await DatabaseHelper.instance.create(
+                    Note(title: title, content: content),
+                  );
+
+                  if (!mounted) return;
+                  Navigator.of(context).pop();
+
+                  if (!mounted) return;
+                  setState(() {});
+                }
+              },
+              child: const Text('Simpan Catatan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Simple Notes dengan SQL')),
-
       body: FutureBuilder<List<Note>>(
         future: DatabaseHelper.instance.readAllNotes(),
         builder: (context, snapshot) {
@@ -51,7 +108,9 @@ class _NotesPageState extends State<NotesPage> {
                     icon: const Icon(Icons.delete, color: Colors.red),
                     onPressed: () async {
                       await DatabaseHelper.instance.delete(note.id!);
-                      setState(() {}); // Refresh UI
+
+                      if (!mounted) return;
+                      setState(() {});
                     },
                   ),
                 ),
@@ -60,18 +119,9 @@ class _NotesPageState extends State<NotesPage> {
           );
         },
       ),
-
       floatingActionButton: FloatingActionButton(
+        onPressed: _showForm,
         child: const Icon(Icons.add),
-        onPressed: () async {
-          await DatabaseHelper.instance.create(
-            Note(
-              title: 'Catatan Baru',
-              content: 'Isi catatan otomatis pada ${DateTime.now()}',
-            ),
-          );
-          setState(() {}); // Refresh UI
-        },
       ),
     );
   }
